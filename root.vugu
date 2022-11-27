@@ -1,0 +1,94 @@
+<div class="demo">
+    <div vg-if='c.IsLoading'>Loading...</div>
+
+    <vgform:Input type="textarea1" class="form-control"
+            :Value='vgform.StringPtr{&c.TextValue}'
+            ></vgform:Input>
+    <button @click="c.HandleEncode(event)">Encode</button>
+    <div vg-if='len(c.EncodeValue) > 0'> <span vg-content='c.EncodeValue'></div>
+
+    <vgform:Input type="textarea1" class="form-control"
+                :Value='vgform.StringPtr{&c.TextValue1}'
+                ></vgform:Input>
+        <button @click="c.HandleDecode(event)">Decode</button>
+        <div vg-if='len(c.DecodeValue) > 0'> <span vg-content='c.DecodeValue'></div>
+</div>
+<script type="application/x-go">
+import "github.com/vugu/vugu/vgform"
+import "strconv"
+type Root struct {
+	TextValue   string
+	TextValue1  string
+	IsLoading   bool
+	EncodeValue string
+	DecodeValue string
+}
+
+var original = "0123456789abcdef"
+var chinese = "嗯对棒赢真美牛纯酷忠雅德诚贤好赞"
+
+func (c *Root) HandleEncode(event vugu.DOMEvent) {
+	ee := event.EventEnv()
+    c.EncodeValue = ""
+	go func() {
+
+		ee.Lock()
+		c.IsLoading = true
+		ee.UnlockRender()
+
+		rm := make(map[string]string)
+		for i, v := range chinese {
+			rm[string(original[i/3])] = string(v)
+		}
+
+		ret := ""
+		for _, v := range c.TextValue {
+			str := fmt.Sprintf("%x", v)
+			for _, i := range str {
+				ret += rm[string(i)]
+			}
+		}
+
+		ee.Lock()
+		defer ee.UnlockRender()
+		c.EncodeValue = ret
+		c.IsLoading = false
+
+	}()
+}
+
+func (c *Root) HandleDecode(event vugu.DOMEvent) {
+	ee := event.EventEnv()
+    c.DecodeValue = ""
+	go func() {
+
+		ee.Lock()
+		c.IsLoading = true
+		ee.UnlockRender()
+
+		m := make(map[string]string)
+        for i, v := range chinese {
+            m[string(v)] = string(original[i/3])
+        }
+
+		ret := ""
+        r := []rune(c.TextValue1)
+        val := ""
+        for _, v := range r {
+            val += m[string(v)]
+            if len(val) == 4 {
+                n, _ := strconv.ParseUint(val, 16, 32)
+                ret += string(n)
+                val = ""
+            }
+        }
+        fmt.Printf(ret)
+
+		ee.Lock()
+		defer ee.UnlockRender()
+		c.DecodeValue = ret
+		c.IsLoading = false
+
+	}()
+}
+</script>
